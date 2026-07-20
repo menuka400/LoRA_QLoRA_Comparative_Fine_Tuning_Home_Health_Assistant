@@ -205,7 +205,14 @@ If a key is ever accidentally exposed (e.g. pasted somewhere public), revoke it 
 **Locally:**
 1. Set up your Groq API key as described above.
 2. Run `generate_dataset.py` on your local machine to produce `train.jsonl` / `val.jsonl` under `dataset/`.
-3. Upload the `dataset/` folder to your Google Drive (e.g. `MyDrive/llm-finetuning/dataset/`), so the Colab notebook can access it.
+3. Upload the `dataset/` folder to your Google Drive at this exact path, since the notebook's `DATA_DIR` is hardcoded to look for it there:
+
+```
+MyDrive/llm-finetuning/dataset/train.jsonl
+MyDrive/llm-finetuning/dataset/val.jsonl
+```
+
+If you'd rather use a different path, update the `DATA_DIR` variable near the top of each relevant notebook section to match.
 
 **In Google Colab:**
 4. Open `LoRA_QLoRA_Comparative_Fine_Tuning_Home_Health_Assistant.ipynb` in Colab.
@@ -214,4 +221,11 @@ If a key is ever accidentally exposed (e.g. pasted somewhere public), revoke it 
 7. In a fresh runtime, run the **QLoRA fine-tuning** section (DeepSeek-R1-Distill-7B) — keeping this separate from the LoRA run avoids unnecessary VRAM pressure from having two large models loaded at once.
 8. Run the **comparison** section, once with `ADAPTER_TYPE = "lora"` and once with `ADAPTER_TYPE = "qlora"`, to generate before/after outputs for each.
 
-Both trained adapters are saved to Google Drive as lightweight LoRA adapter files (a few hundred MB), not merged full models — load them on top of the respective base model at inference time using `peft.PeftModel.from_pretrained()`.
+Both trained adapters are saved to Google Drive as lightweight LoRA adapter files (a few hundred MB), not merged full models, at:
+
+```
+MyDrive/llm-finetuning/qwen2.5-3b-lora/
+MyDrive/llm-finetuning/deepseek-r1-7b-qlora/
+```
+
+Load them on top of the respective base model at inference time using `peft.PeftModel.from_pretrained()`.
