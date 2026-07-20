@@ -1,36 +1,43 @@
 # MedGuide-FT: LoRA vs QLoRA Comparative Fine-Tuning — Home Health Assistant
 
-A comparative fine-tuning project demonstrating **LoRA** and **QLoRA** on two different open-source LLMs, applied to a synthetically generated home-health Q&A dataset. Built end-to-end on **Google Colab's free tier (T4 GPU)** — including dataset generation, both fine-tuning approaches, and a structured before/after evaluation.
+A comparative fine-tuning project demonstrating **LoRA** and **QLoRA** on two different open-source LLMs, applied to a synthetically generated home-health Q&A dataset. Dataset generation runs **locally** via Groq's API; both fine-tuning runs and the before/after evaluation run on **Google Colab's free tier (T4 GPU)**.
 
 ## What this project demonstrates
 
-- Generating a custom instruction-tuning dataset from scratch using an LLM (Groq's `llama-3.1-8b-instant`)
-- Fine-tuning with **LoRA** (full precision adapters) on a 3B model
-- Fine-tuning with **QLoRA** (4-bit quantized adapters) on a 7B model
-- Running both entirely on **free-tier Colab hardware** (16GB T4 GPU)
+- Generating a custom instruction-tuning dataset from scratch using an LLM (Groq's `llama-3.1-8b-instant`), run locally
+- Fine-tuning with **LoRA** (full precision adapters) on a 3B model, run on Colab
+- Fine-tuning with **QLoRA** (4-bit quantized adapters) on a 7B model, run on Colab
+- Fitting both fine-tuning runs within **free-tier Colab hardware** (16GB T4 GPU)
 - Structured before/after evaluation comparing base vs. fine-tuned model outputs
 - Practical, hands-on debugging of real dependency/version issues encountered along the way
 
 ## Project structure
 
 ```
-├── generate_dataset.py       # Synthetic Q&A dataset generator (Groq API)
-├── train_lora.py             # LoRA fine-tuning script (Qwen2.5-3B-Instruct)
-├── train_qlora.py            # QLoRA fine-tuning script (DeepSeek-R1-Distill-Qwen-7B)
-├── compare_before_after.py   # Base vs fine-tuned model comparison script
+├── generate_dataset.py          # Dataset generator — run LOCALLY (Groq API)
+├── LoRA_QLoRA_Comparative_Fine_Tuning_Home_Health_Assistant.ipynb
+│                                 # Run in GOOGLE COLAB — contains LoRA
+│                                 # training, QLoRA training, and the
+│                                 # before/after comparison, as separate
+│                                 # sections within one notebook
 ├── dataset/
-│   ├── raw_all.jsonl         # All generated Q&A pairs (flat format, for review)
-│   ├── train.jsonl           # Training split (chat-message format)
-│   └── val.jsonl             # Validation split (chat-message format)
+│   ├── raw_all.jsonl             # All generated Q&A pairs (flat format, for review)
+│   ├── train.jsonl               # Training split (chat-message format)
+│   └── val.jsonl                 # Validation split (chat-message format)
 └── README.md
 ```
+
+This project uses two environments:
+
+- **`generate_dataset.py` runs locally** (not in Colab) — it calls the Groq API to synthetically generate the Q&A dataset, using a local `.env` file for the API key. The output (`train.jsonl` / `val.jsonl`) is then uploaded to Google Drive for the next stage.
+- **The `.ipynb` notebook runs in Google Colab** — it handles LoRA fine-tuning, QLoRA fine-tuning, and the before/after comparison, all as separate sections in one notebook, using the dataset files from Drive. Model checkpoints and adapters are also saved back to Drive so the notebook can be resumed across separate Colab runtimes.
 
 ## Models used
 
 | | Base Model | Technique | Precision |
 |---|---|---|---|
-| Script 1 | `Qwen/Qwen2.5-3B-Instruct` | LoRA | fp16/bf16 |
-| Script 2 | `deepseek-ai/DeepSeek-R1-Distill-Qwen-7B` | QLoRA | 4-bit (nf4) |
+| Notebook section: LoRA fine-tuning | `Qwen/Qwen2.5-3B-Instruct` | LoRA | fp16/bf16 |
+| Notebook section: QLoRA fine-tuning | `deepseek-ai/DeepSeek-R1-Distill-Qwen-7B` | QLoRA | 4-bit (nf4) |
 
 Two different model sizes were deliberately chosen to reflect a real constraint: full-precision LoRA on a 7B model doesn't reliably fit on a free-tier T4 (16GB VRAM), while 4-bit QLoRA does. Pairing a smaller model with LoRA and a larger model with QLoRA demonstrates both techniques within the same hardware budget.
 
@@ -167,10 +174,10 @@ This is a **showcase/learning project**, not a production medical tool. Worth be
 
 ## Setup: Groq API key
 
-`generate_dataset.py` calls the Groq API, so you'll need a free API key before running it.
+`generate_dataset.py` runs **locally** (not in Colab) and calls the Groq API, so you'll need a free API key before running it.
 
 1. Create a free account and generate a key at [console.groq.com/keys](https://console.groq.com/keys).
-2. In the project root, create a file named `.env` (same folder as `generate_dataset.py`).
+2. In the project root — the same folder as `generate_dataset.py` — create a file named `.env`.
 3. Add your key to it in this exact format — no quotes, no spaces around the `=`:
 
 ```dotenv
@@ -195,9 +202,16 @@ If a key is ever accidentally exposed (e.g. pasted somewhere public), revoke it 
 
 ## How to reproduce
 
-1. Set up your Groq API key as described above, then run `generate_dataset.py` to produce `train.jsonl`/`val.jsonl`.
-2. Open `train_lora.py` in Google Colab, mount Drive, run all cells.
-3. Open `train_qlora.py` in Google Colab (separate session), mount Drive, run all cells.
-4. Open `compare_before_after.py`, set `ADAPTER_TYPE` to `"lora"` or `"qlora"`, run to generate before/after comparisons for each.
+**Locally:**
+1. Set up your Groq API key as described above.
+2. Run `generate_dataset.py` on your local machine to produce `train.jsonl` / `val.jsonl` under `dataset/`.
+3. Upload the `dataset/` folder to your Google Drive (e.g. `MyDrive/llm-finetuning/dataset/`), so the Colab notebook can access it.
+
+**In Google Colab:**
+4. Open `LoRA_QLoRA_Comparative_Fine_Tuning_Home_Health_Assistant.ipynb` in Colab.
+5. Set `Runtime → Change runtime type → T4 GPU`.
+6. Mount Google Drive and run the **LoRA fine-tuning** section (Qwen2.5-3B).
+7. In a fresh runtime, run the **QLoRA fine-tuning** section (DeepSeek-R1-Distill-7B) — keeping this separate from the LoRA run avoids unnecessary VRAM pressure from having two large models loaded at once.
+8. Run the **comparison** section, once with `ADAPTER_TYPE = "lora"` and once with `ADAPTER_TYPE = "qlora"`, to generate before/after outputs for each.
 
 Both trained adapters are saved to Google Drive as lightweight LoRA adapter files (a few hundred MB), not merged full models — load them on top of the respective base model at inference time using `peft.PeftModel.from_pretrained()`.
