@@ -47,9 +47,12 @@ Key design choices:
 
 ### Dataset stats
 
+The dataset was generated in **two runs**. The first run used a lower `CALLS_PER_TOPIC` setting and produced only **248 unique pairs** after deduplication — too small to be a meaningful training set for the showcase goal. The generator script supports resuming (it loads any existing `raw_all.jsonl` and skips regenerating duplicate questions), so a second run was done with a higher `CALLS_PER_TOPIC`, topping the dataset up to **550 total unique pairs** without discarding or regenerating the first run's data.
+
 | | Count |
 |---|---|
-| Total unique Q&A pairs generated | 550 |
+| First run (initial attempt) | 248 unique pairs |
+| Second run (topped up, resumed from first) | 550 unique pairs (final) |
 | Training set (`train.jsonl`) | 495 |
 | Validation set (`val.jsonl`) | 55 |
 | Split ratio | 90 / 10 |
@@ -123,6 +126,28 @@ This base model is a distilled *reasoning* model — its default behavior is to 
 > **After:** *"To help alleviate a sore throat, try drinking warm liquids like tea or broth, and gargling with salt water. You can also use a humidifier to add moisture to the air, and use a throat lozenge or neti pot to soothe the throat. If your sore throat persists or is severe, see a doctor."*
 
 Full before/after transcripts for all test questions, both models, are saved in `comparison_lora.json` and `comparison_qlora.json`.
+
+## Challenges encountered (Google Colab)
+
+Several real dependency and environment issues came up while running this on free-tier Colab. Documenting them here since they're common gotchas for anyone reproducing this project:
+
+| Problem | Cause | Fix |
+|---|---|---|
+| `ImportError: Found an incompatible version of torchao` when calling `get_peft_model()` / `PeftModel.from_pretrained()` | Colab's pre-installed `torchao` version is older than what `peft` expects, even though it isn't actually needed for LoRA/QLoRA | `!pip uninstall -y torchao`, then **restart the runtime** and re-run all cells from the top |
+| `ImportError: Using bitsandbytes 4-bit quantization requires bitsandbytes >=0.46.1` when loading the 4-bit QLoRA model | Fresh Colab sessions sometimes have an outdated or missing `bitsandbytes` install | `!pip install -U -q bitsandbytes`, then **restart the runtime** and re-run all cells from the top |
+| `TypeError: SFTConfig.__init__() got an unexpected keyword argument 'max_seq_length'` | `trl` renamed this argument across versions (`max_seq_length` → `max_length`) | Avoided the version-specific kwarg entirely — set `tokenizer.model_max_length` directly instead of passing it to `SFTConfig` |
+| `TypeError: SFTTrainer.__init__() got an unexpected keyword argument 'tokenizer'` | `trl` renamed this argument to `processing_class` in newer versions | Used `inspect.signature()` to detect which keyword the installed `trl` version expects, and pass the tokenizer under the correct name automatically |
+| Groq API `429 rate_limit_exceeded` errors during dataset generation | Free-tier Groq caps `llama-3.1-8b-instant` at 6,000 tokens/minute; large batch requests exceeded this | Reduced `max_tokens` per call, reduced pairs requested per call, added a fixed delay between calls, and added automatic retry with backoff that reads Groq's suggested wait time from the error message |
+| Low initial dataset yield (248 pairs instead of the expected up-to-720 ceiling) | Aggressive-enough deduplication plus some failed/empty generation calls reduced the effective yield | Added incremental saving with resume support, then re-ran the generator a second time to top up the dataset without losing or duplicating the first run's data |
+
+**General lesson:** because Colab sessions don't persist installed packages between runtimes, and library APIs (`trl` especially) change between versions without warning, it's worth running a standard setup cell at the start of every fresh Colab session:
+
+```python
+!pip install -q -U transformers accelerate peft trl datasets bitsandbytes
+!pip uninstall -y torchao
+```
+
+...followed by a runtime restart, before running any training or inference code.
 
 ## Known limitations
 
