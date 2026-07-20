@@ -140,9 +140,37 @@ This is a **showcase/learning project**, not a production medical tool. Worth be
 - Google Colab (free tier, T4 GPU) for both dataset generation support and training
 - Google Drive for model/adapter persistence across Colab sessions
 
+## Setup: Groq API key
+
+`generate_dataset.py` calls the Groq API, so you'll need a free API key before running it.
+
+1. Create a free account and generate a key at [console.groq.com/keys](https://console.groq.com/keys).
+2. In the project root, create a file named `.env` (same folder as `generate_dataset.py`).
+3. Add your key to it in this exact format — no quotes, no spaces around the `=`:
+
+```dotenv
+GROQ_API_KEY=your_actual_key_here
+```
+
+4. Install the loader library so the script can read it:
+
+```bash
+pip install python-dotenv
+```
+
+The script loads this automatically via `load_dotenv()` at the top of `generate_dataset.py` — no code changes needed.
+
+**Important:** never commit your `.env` file to GitHub. Add it to `.gitignore` before pushing:
+
+```
+.env
+```
+
+If a key is ever accidentally exposed (e.g. pasted somewhere public), revoke it immediately from the Groq console and generate a new one — treat any exposed key as compromised.
+
 ## How to reproduce
 
-1. Run `generate_dataset.py` (requires a free Groq API key) to produce `train.jsonl`/`val.jsonl`.
+1. Set up your Groq API key as described above, then run `generate_dataset.py` to produce `train.jsonl`/`val.jsonl`.
 2. Open `train_lora.py` in Google Colab, mount Drive, run all cells.
 3. Open `train_qlora.py` in Google Colab (separate session), mount Drive, run all cells.
 4. Open `compare_before_after.py`, set `ADAPTER_TYPE` to `"lora"` or `"qlora"`, run to generate before/after comparisons for each.
